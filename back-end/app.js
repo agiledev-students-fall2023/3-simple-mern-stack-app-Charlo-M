@@ -1,82 +1,88 @@
-require('dotenv').config({ silent: true }) // load environmental variables from a hidden file named .env
-const express = require('express') // CommonJS import style!
-const morgan = require('morgan') // middleware for nice logging of incoming HTTP requests
-const cors = require('cors') // middleware for enabling CORS (Cross-Origin Resource Sharing) requests.
-const mongoose = require('mongoose')
+require('dotenv').config() // load environmental variables from a .env file
 
-const app = express() // instantiate an Express object
-app.use(morgan('dev', { skip: (req, res) => process.env.NODE_ENV === 'test' })) // log all incoming requests, except when in unit test mode.  morgan has a few logging default styles - dev is a nice concise color-coded style
-app.use(cors()) // allow cross-origin resource sharing
+const express = require('express');
+const morgan = require('morgan');
+const cors = require('cors');
+const mongoose = require('mongoose');
 
-// use express's builtin body-parser middleware to parse any data included in a request
-app.use(express.json()) // decode JSON-formatted incoming POST data
-app.use(express.urlencoded({ extended: true })) // decode url-encoded incoming POST data
+const app = express();
 
-// connect to database
-mongoose
-  .connect(`${process.env.DB_CONNECTION_STRING}`)
-  .then(data => console.log(`Connected to MongoDB`))
-  .catch(err => console.error(`Failed to connect to MongoDB: ${err}`))
+// Middleware setup
+app.use(morgan('dev', { skip: (req, res) => process.env.NODE_ENV === 'test' }));
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// load the dataabase models we want to deal with
-const { Message } = require('./models/Message')
-const { User } = require('./models/User')
+// Connect to the database
+mongoose.connect(process.env.DB_CONNECTION_STRING, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('Failed to connect to MongoDB:', err));
 
-// a route to handle fetching all messages
+// Load the database models
+const { Message } = require('./models/Message');
+const { User } = require('./models/User');
+
+// Route to handle fetching all messages
 app.get('/messages', async (req, res) => {
-  // load all messages from database
   try {
-    const messages = await Message.find({})
+    const messages = await Message.find({});
     res.json({
       messages: messages,
-      status: 'all good',
-    })
+      status: 'all good'
+    });
   } catch (err) {
-    console.error(err)
+    console.error(err);
     res.status(400).json({
       error: err,
-      status: 'failed to retrieve messages from the database',
-    })
+      status: 'failed to retrieve messages from the database'
+    });
   }
-})
+});
 
-// a route to handle fetching a single message by its id
+// Route to handle fetching a single message by its id
 app.get('/messages/:messageId', async (req, res) => {
-  // load all messages from database
   try {
-    const messages = await Message.find({ _id: req.params.messageId })
+    const messages = await Message.findById(req.params.messageId);
     res.json({
-      messages: messages,
-      status: 'all good',
-    })
+      message: messages,
+      status: 'all good'
+    });
   } catch (err) {
-    console.error(err)
+    console.error(err);
     res.status(400).json({
       error: err,
-      status: 'failed to retrieve messages from the database',
-    })
+      status: 'failed to retrieve message from the database'
+    });
   }
-})
-// a route to handle logging out users
+});
+
+// Route to handle saving a message
 app.post('/messages/save', async (req, res) => {
-  // try to save the message to the database
   try {
     const message = await Message.create({
       name: req.body.name,
-      message: req.body.message,
-    })
+      message: req.body.message
+    });
     return res.json({
-      message: message, // return the message we just saved
-      status: 'all good',
-    })
+      message: message,
+      status: 'all good'
+    });
   } catch (err) {
-    console.error(err)
+    console.error(err);
     return res.status(400).json({
       error: err,
-      status: 'failed to save the message to the database',
-    })
+      status: 'failed to save the message to the database'
+    });
   }
-})
+});
 
-// export the express app we created to make it available to other modules
-module.exports = app // CommonJS export style!
+// Route to provide "About Us" page content
+app.get('/about', (req, res) => {
+  const aboutData = {
+    content: 'Hi, I am Charlotte, a senior from NYU. I love gaming, especially league of legend. My discord name is the below image lol',
+    imageUrl: 'https://images4.fanpop.com/image/photos/16700000/Sponge-Bob-Square-Pants-spongebob-squarepants-16769752-440-396.jpg'  // Replace with your actual image URL
+  };
+  res.json(aboutData);
+});
+
+module.exports = app;
